@@ -1,5 +1,6 @@
 <script setup>
-import {onMounted, reactive, ref, watch} from 'vue'
+import { onMounted, reactive, ref, watch } from 'vue'
+import { apiService } from '@/services/apiService'
 
 const data = ref(null)
 const showModal = ref(false)
@@ -13,24 +14,15 @@ const currentPage = ref(1)
 const totalPosts = ref(0)
 const limit = 10
 
-const fetchPosts = async () => {
-  try {
-    const skip = (currentPage.value - 1) * limit
-    const response = await fetch(`https://dummyjson.com/posts?limit=${limit}&skip=${skip}`)
-    const json = await response.json()
-    data.value = json
-    totalPosts.value = json.total
-  } catch (error) {
-    console.error('Error fetching data:', error)
-  }
-}
-
-onMounted(fetchPosts);
+onMounted(async () => {
+  console.log(`Page: ${currentPage.value}, limit: ${limit}`)
+  data.value = await apiService.fetchPosts(limit, currentPage.value)
+})
 
 // Watch để gọi API khi currentPage thay đổi
 watch(currentPage, (newValue, oldValue) => {
   console.log(`newValue is ${newValue} and oldValue is ${oldValue}`)
-  fetchPosts()
+  data.value = apiService.fetchPosts(limit, currentPage)
 })
 
 const confirmDelete = (post) => {
@@ -38,21 +30,14 @@ const confirmDelete = (post) => {
   Object.assign(postToDelete, post)
 }
 
-const deletePost = async () => {
-  try {
-    if (!postToDelete.id) return
-
-    const response = await fetch(`https://dummyjson.com/posts/${postToDelete.id}`, {
-      method: 'DELETE',
-    })
-    if (!response.ok) {
-      throw new Error(`HTTP error! Status: ${response.status}`)
-    }
+const handleDeletePost = async () => {
+  if (!postToDelete.id) return
+  const dataResponse = await apiService.deletePost(postToDelete.id)
+  if (dataResponse) {
+    console.log('Post Deleted:', dataResponse)
+    alert('Post deleted successfully!')
     resetPostValue()
-    console.log(`Post ${postToDelete.id} deleted`)
-    await fetchPosts()
-  } catch (error) {
-    throw new Error('HTTP Error! Status: ', error)
+    data.value = await apiService.fetchPosts(limit, currentPage.value)
   }
 }
 
@@ -78,46 +63,52 @@ const goToPage = (page) => {
       <RouterLink class="btn btn-success" to="/create">Create</RouterLink>
       <table class="table table-hover">
         <thead>
-        <tr>
-          <td>ID</td>
-          <td>Title</td>
-          <td>Body</td>
-          <td>Tag</td>
-          <td>Reactions</td>
-          <td>Views</td>
-          <td></td>
-        </tr>
+          <tr>
+            <td>ID</td>
+            <td>Title</td>
+            <td>Body</td>
+            <td>Tag</td>
+            <td>Reactions</td>
+            <td>Views</td>
+            <td></td>
+          </tr>
         </thead>
         <tbody>
-        <tr v-for="item in data?.posts" :key="item.id">
-          <td>{{ item.id }}</td>
-          <td>{{ item.title }}</td>
-          <td>{{ item.body }}</td>
-          <td>
-            <ul>
-              <li v-for="tag in item?.tags" :key="tag">{{ tag }}</li>
-            </ul>
-          </td>
-          <td>
-            <ul>
-              <li>likes: {{ item.reactions.likes }}</li>
-              <li>dislikes: {{ item.reactions.dislikes }}</li>
-            </ul>
-          </td>
-          <td>{{ item.views }}</td>
-          <td>
-            <RouterLink class="btn btn-primary" :to="{ path: `/${item.id}/edit` }">Edit</RouterLink>
-            <button class="btn btn-danger" @click="confirmDelete(item)">Delete</button>
-          </td>
-        </tr>
+          <tr v-for="item in data?.posts" :key="item.id">
+            <td>{{ item.id }}</td>
+            <td>{{ item.title }}</td>
+            <td>{{ item.body }}</td>
+            <td>
+              <ul>
+                <li v-for="tag in item?.tags" :key="tag">{{ tag }}</li>
+              </ul>
+            </td>
+            <td>
+              <ul>
+                <li>likes: {{ item.reactions.likes }}</li>
+                <li>dislikes: {{ item.reactions.dislikes }}</li>
+              </ul>
+            </td>
+            <td>{{ item.views }}</td>
+            <td>
+              <RouterLink class="btn btn-primary" :to="{ path: `/${item.id}/edit` }"
+                >Edit</RouterLink
+              >
+              <button class="btn btn-danger" @click="confirmDelete(item)">Delete</button>
+            </td>
+          </tr>
         </tbody>
       </table>
 
-      <ul class="pagination justify-content-end" style="margin:20px 0">
+      <ul class="pagination justify-content-end" style="margin: 20px 0">
         <li class="page-item" :class="{ disabled: currentPage === 1 }">
           <button class="page-link" @click="goToPage(currentPage - 1)">Previous</button>
         </li>
-        <li v-for="page in totalPages()" :key="page" class="page-item" :class="{ active: currentPage === page }">
+        <li
+          v-for="page in totalPages()"
+          :key="page"
+          class="page-item"
+          :class="{ active: currentPage === page }">
           <template v-if="page === 1 || page === totalPages() || Math.abs(page - currentPage) <= 2">
             <button class="page-link" @click="goToPage(page)">{{ page }}</button>
           </template>
@@ -149,7 +140,7 @@ const goToPage = (page) => {
             </p>
           </div>
           <div class="modal-footer">
-            <button @click="deletePost()" class="btn btn-primary">Yes, delete</button>
+            <button @click="handleDeletePost()" class="btn btn-primary">Yes, delete</button>
             <button @click="showModal = false" class="btn btn-danger">Cancel</button>
           </div>
         </div>
@@ -164,5 +155,13 @@ thead {
 }
 .modal {
   display: block !important;
+}
+.error-message {
+  color: red;
+  font-size: 14px;
+}
+
+.input-error {
+  border: 1px solid red;
 }
 </style>

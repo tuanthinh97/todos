@@ -5,15 +5,17 @@
     </div>
     <div class="post-body">
       <div class="mb-3 mt-3">
-        <label class="form-label">Title: </label> <span>{{ post.title }}</span>
-        <input class="form-control" v-model="post.title" />
+        <label class="form-label">Title </label>
+        <input class="form-control" :class="{'input-error': form.error.title}" v-model="form.post.title" />
+        <span v-if="form.error.title" class="error-message">{{ form.error.title }}</span>
       </div>
       <div class="mb-3 mt-3">
-        <label class="form-label">Body: </label> <span>{{ post.body }}</span>
-        <textarea class="form-control" rows="5" v-model="post.body"></textarea>
+        <label class="form-label">Body </label>
+        <textarea class="form-control" rows="5" v-model="form.post.body"></textarea>
+        <span v-if="form.error.body" class="error-message">{{ form.error.body }}</span>
       </div>
       <div class="mb-3 mt-3">
-        <label class="form-label">Tags: </label> <span>{{ post.tags }}</span>
+        <label class="form-label">Tags: </label> <br/>
         <div class="form-check">
           <input
             class="form-check-input"
@@ -21,7 +23,7 @@
             id="fiction"
             value="fiction"
             @change="toggleTag"
-            :checked="post.tags.includes('fiction')"
+            :checked="form.post.tags.includes('fiction')"
           />
           <label class="form-check-label" for="fiction">Fiction</label>
         </div>
@@ -32,7 +34,7 @@
             id="magical"
             value="magical"
             @change="toggleTag"
-            :checked="post.tags.includes('magical')"
+            :checked="form.post.tags.includes('magical')"
           />
           <label class="form-check-label" for="magical">Magical</label>
         </div>
@@ -43,7 +45,7 @@
             id="history"
             value="history"
             @change="toggleTag"
-            :checked="post.tags.includes('history')"
+            :checked="form.post.tags.includes('history')"
           />
           <label class="form-check-label" for="history">History</label>
         </div>
@@ -54,7 +56,7 @@
             id="crime"
             value="crime"
             @change="toggleTag"
-            :checked="post.tags.includes('crime')"
+            :checked="form.post.tags.includes('crime')"
           />
           <label class="form-check-label" for="crime">Crime</label>
         </div>
@@ -65,7 +67,7 @@
             id="english"
             value="english"
             @change="toggleTag"
-            :checked="post.tags.includes('english')"
+            :checked="form.post.tags.includes('english')"
           />
           <label class="form-check-label" for="english">English</label> <br />
         </div>
@@ -76,14 +78,15 @@
             id="american"
             value="american"
             @change="toggleTag"
-            :checked="post.tags.includes('american')"
+            :checked="form.post.tags.includes('american')"
           />
           <label class="form-check-label" for="american">American</label>
         </div>
+        <span v-if="form.error.tags" class="error-message">{{ form.error.tags }}</span>
       </div>
 
       <div>
-        <button class="btn btn-primary" @click="updatePost">Save</button>
+        <button class="btn btn-primary" @click="handleUpdatePost()">Save</button>
       </div>
     </div>
   </div>
@@ -92,32 +95,43 @@
 <script setup>
 import { onMounted, reactive } from 'vue'
 import { useRoute } from 'vue-router'
-import router from '@/router/index.js'
+import router from "@/router/index.js"
+import {apiService} from "@/services/apiService.js"
 
 const route = useRoute()
 console.log(route.params.id)
 
-const post = reactive({
-  title: '',
-  body: '',
-  tags: [],
+const form = reactive({
+  post: {title: '', body: '', tags: []},
+  error: new Proxy({}, {
+    get(target, prod) {
+      return target[prod] || '';
+    },
+    set(target, prod, value) {
+      target[prod] = value;
+      return true
+    }
+  })
 })
 
-const fetchPost = async () => {
-  try {
-    const response = await fetch(`https://dummyjson.com/posts/${route.params.id}`)
-    if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`)
-    const data = await response.json()
-    Object.assign(post, data)
-    console.log(post)
-  } catch (error) {
-    console.error('Error fetching post:', error)
+const handleUpdatePost = async () => {
+  const data = await apiService.updatePost(route.params.id, form.post)
+  if (data) {
+    if (data?.error) {
+      form.error = data.error
+    } else {
+      console.log('Post Updated:', data)
+      alert('Post updated successfully!')
+      await router.push(`/`)
+      location.reload()
+    }
   }
 }
 
-onMounted(() => {
+onMounted(async () => {
   console.log('onMounted: Component đã gắn vào DOM')
-  fetchPost()
+  const response = await apiService.fetchPostId(route.params.id)
+  Object.assign(form.post, response)
 })
 
 // onBeforeMount(() => {
@@ -146,32 +160,9 @@ onMounted(() => {
 const toggleTag = (event) => {
   const value = event.target.value
   if (event.target.checked) {
-    post.tags.push(value)
+    form.post.tags.push(value)
   } else {
-    post.tags = post.tags.filter((tag) => !tag !== value)
-  }
-}
-
-const updatePost = async () => {
-  try {
-    const response = await fetch(`https://dummyjson.com/posts/${route.params.id}`, {
-      method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(post),
-    })
-
-    if (!response.ok) {
-      throw new Error(`HTTP Error! Status: ${response.status}`)
-    }
-
-    const updatedData = await response.json()
-    console.log('Post Updated:', updatedData)
-
-    await router.push(`/`).then(() => location.reload())
-  } catch (error) {
-    console.error('Error updating post:', error)
+    form.post.tags = form.post.tags.filter((tag) => !tag !== value)
   }
 }
 </script>

@@ -3,90 +3,120 @@
     <div class="post-header">
       <h3>Add Post</h3>
     </div>
-    <div class="post-body">
+    <div class="post-body needs-validation">
       <div class="mb-3 mt-3">
-        <label class="form-label">Title: </label> <span>{{ post.title }}</span>
-        <input class="form-control" v-model="post.title" />
+        <label class="form-label">Title </label>
+        <input class="form-control" :class="{ 'input-error': form.error.title }" v-model="form.post.title" />
+        <span v-if="form.error.title" class="error-message">{{ form.error.title }}</span>
       </div>
       <div class="mb-3 mt-3">
-        <label class="form-label">Body: </label> <span>{{ post.body }}</span>
-        <textarea class="form-control" rows="5" v-model="post.body"></textarea>
+        <label class="form-label">Body </label>
+        <textarea class="form-control" :class="{ 'input-error': form.error.body }" rows="5" v-model="form.post.body"></textarea>
+        <span v-if="form.error.body" class="error-message">{{ form.error.body }}</span>
       </div>
       <div class="mb-3 mt-3">
-        <label class="form-label">Tags: </label> <span>{{ post.tags }}</span>
-        <div class="form-check">
-          <input class="form-check-input" type="checkbox" id="fiction" value="fiction" @change="toggleTag" />
+        <label class="form-label">Tags </label> <br/>
+        <div class="form-check form-check-inline">
+          <input
+            class="form-check-input"
+            type="checkbox"
+            id="fiction"
+            value="fiction"
+            @change="toggleTag"
+          />
           <label class="form-check-label" for="fiction">Fiction</label>
         </div>
-        <div class="form-check">
-          <input class="form-check-input" type="checkbox" id="magical" value="magical" @change="toggleTag" />
+        <div class="form-check form-check-inline">
+          <input
+            class="form-check-input"
+            type="checkbox"
+            id="magical"
+            value="magical"
+            @change="toggleTag"
+          />
           <label class="form-check-label" for="magical">Magical</label>
         </div>
-        <div class="form-check">
-          <input class="form-check-input" type="checkbox" id="history" value="history" @change="toggleTag" />
+        <div class="form-check form-check-inline">
+          <input
+            class="form-check-input"
+            type="checkbox"
+            id="history"
+            value="history"
+            @change="toggleTag"
+          />
           <label class="form-check-label" for="history">History</label>
         </div>
-        <div class="form-check">
-          <input class="form-check-input" type="checkbox" id="crime" value="crime" @change="toggleTag" />
+        <div class="form-check form-check-inline">
+          <input
+            class="form-check-input"
+            type="checkbox"
+            id="crime"
+            value="crime"
+            @change="toggleTag"
+          />
           <label class="form-check-label" for="crime">Crime</label>
         </div>
-        <div class="form-check">
-          <input class="form-check-input" type="checkbox" id="english" value="english" @change="toggleTag" />
+        <div class="form-check form-check-inline">
+          <input
+            class="form-check-input"
+            type="checkbox"
+            id="english"
+            value="english"
+            @change="toggleTag"
+          />
           <label class="form-check-label" for="english">English</label>
         </div>
+        <br/>
+        <span v-if="form.error.tags">{{ form.error.tags }}</span>
       </div>
 
       <div>
-        <button class="btn btn-primary" @click="savePost">Save</button>
+        <button class="btn btn-primary" @click="handleCreatePost()">Save</button>
       </div>
     </div>
   </div>
 </template>
 
 <script setup>
-import { reactive } from 'vue'
+import {reactive} from 'vue'
 import router from '@/router/index.js'
+import {apiService} from '@/services/apiService.js'
 
-const post = reactive({
-  title: '',
-  body: '',
-  tags: [],
+const form = reactive({
+  post: { title: '', body: '', tags: [] },  // Dữ liệu bài viết
+  error: new Proxy({}, {
+    get(target, prop) {
+      return target[prop] || '' // Mặc định lỗi rỗng nếu chưa có
+    },
+    set(target, prop, value) {
+      target[prop] = value
+      return true
+    }
+  })
 })
 
 const toggleTag = (event) => {
   const value = event.target.value
   if (event.target.checked) {
-    post.tags.push(value)
+    form.post.tags.push(value)
   } else {
-    post.tags = post.tags.filter((tag) => tag !== value)
+    form.post.tags = form.post.tags.filter((tag) => tag !== value)
   }
 }
 
-const savePost = async () => {
-  try {
-    const response = await fetch('https://dummyjson.com/posts/add', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ...post, userId: 1 }),
-    })
-
-    // Nếu status là 400, lấy message từ body
-    if (response.status === 400) {
-      const errorData = await response.json() // Chuyển response body thành JSON
-      const message = `Error 400: ${errorData.message || 'Bad Request'}`
-      alert(message)
-      throw new Error(message) // Lấy message từ API nếu có
+const handleCreatePost = async () => {
+  form.error = {};
+  const body = JSON.stringify({ ...form.post, userId: 1 })
+  const data = await apiService.createPost(body)
+  if (data) {
+    if (data?.error) {
+      form.error = { ...data.error }
+    } else {
+      console.log('Post Created:', data)
+      alert('Post created successfully!')
+      await router.push(`/`)
+      location.reload()
     }
-
-    if (!response.ok) {
-      throw new Error(`HTTP error! Status: ${response.status}`)
-    }
-
-    const data = await response.json()
-    console.log('Post Created:', data)
-    await router.push('/')
-  } catch (error) {
-    console.error('Error saving post:', error.message) // Hiển thị lỗi
   }
 }
 </script>
