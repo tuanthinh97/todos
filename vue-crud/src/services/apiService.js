@@ -4,21 +4,23 @@ import * as yup from "yup";
 
 export const apiService = {
   // Hàm lấy dánh sách bài viết
-  fetchPosts: async (limit = 10, page = 1) => {
+  fetchPosts: async (size = 10, page = 1) => {
     try {
-      const skip = (page - 1) * limit
-      const response = await apiClient.get(`posts?limit=${limit}&skip=${skip}`)
-      return response.data
+      const response = await apiClient.get(`/api/articles?sort=id,desc&size=${size}&page=${page-1}`)
+      return {
+        data: response.data,
+        totalCount: parseInt(response.headers['x-total-count'], 10) || 0
+      }
     } catch (error) {
       console.error('Error fetching post:', error)
-      return null
+      return { data: [], totalCount: 0 }
     }
   },
 
   // Hàm lấy chi tiết bài viết
   fetchPostId: async (postId) => {
     try {
-      const response = await apiClient.get(`/posts/${postId}`)
+      const response = await apiClient.get(`/api/articles/${postId}`)
       return response.data
     } catch (error) {
       console.error('Error fetching post:', error)
@@ -29,9 +31,8 @@ export const apiService = {
   // Hàm tạo bài viết mới
   createPost: async (postData) => {
     try {
-      const errors = await postSchema.validate(JSON.parse(postData), { abortEarly: false });
-      console.log(errors);
-      const response = await apiClient.post(`/posts/add`, postData);
+      await postSchema.validate(JSON.parse(postData), { abortEarly: false });
+      const response = await apiClient.post(`/api/articles`, postData);
       console.log('Post Created:', response.data);
       return response.data;
     } catch (error) {
@@ -52,7 +53,7 @@ export const apiService = {
   updatePost: async (postId, postData) => {
     try {
       await postSchema.validate(postData, { abortEarly: false });
-      const response = await apiClient.put(`/posts/${postId}`, postData)
+      const response = await apiClient.put(`/api/articles/${postId}`, postData)
       console.log('Post Updated:', response.data)
       return response.data
     } catch (error) {
@@ -65,14 +66,14 @@ export const apiService = {
         return {error: validationErrors};
       }
       console.error('Error updating post:', error)
-      return null
+      return error
     }
   },
 
   // Hàm xóa bài viết
   deletePost: async (postId) => {
     try {
-      await apiClient.delete(`/posts/${postId}`)
+      await apiClient.delete(`/api/articles/${postId}`)
       console.log(`Post ${postId} deleted`)
       return true
     } catch (error) {

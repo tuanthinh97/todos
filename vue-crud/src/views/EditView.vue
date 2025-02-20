@@ -11,7 +11,7 @@
       </div>
       <div class="mb-3 mt-3">
         <label class="form-label">Body </label>
-        <textarea class="form-control" rows="5" v-model="form.post.body"></textarea>
+        <textarea class="form-control" :class="{'input-error': form.error.body}" rows="5" v-model="form.post.body"></textarea>
         <span v-if="form.error.body" class="error-message">{{ form.error.body }}</span>
       </div>
       <div class="mb-3 mt-3">
@@ -97,6 +97,8 @@ import { onMounted, reactive } from 'vue'
 import { useRoute } from 'vue-router'
 import router from "@/router/index.js"
 import {apiService} from "@/services/apiService.js"
+import { useToast } from 'vue-toastification';
+const toast = useToast();
 
 const route = useRoute()
 console.log(route.params.id)
@@ -119,9 +121,9 @@ const handleUpdatePost = async () => {
   if (data) {
     if (data?.error) {
       form.error = data.error
+      toast.error('Failed to update post. Please check again.');
     } else {
-      console.log('Post Updated:', data)
-      alert('Post updated successfully!')
+      toast.success('Post updated successfully!')
       await router.push(`/`)
       location.reload()
     }

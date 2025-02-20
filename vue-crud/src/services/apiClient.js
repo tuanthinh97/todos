@@ -2,7 +2,7 @@ import axios from 'axios'
 
 // Tạo Axios instance dùng chung
 const apiClient = axios.create({
-  baseURL: 'https://dummyjson.com',
+  baseURL: 'http://localhost:8088',
   timeout: 5000, // Timeout 5s
   headers: {
     'Content-Type': 'application/json',
@@ -27,14 +27,26 @@ apiClient.interceptors.response.use(
   (error) => {
     console.error('API Error:', error.response?.status, error.message)
 
+    const status = error.response?.status
+    const data = error.response?.data
+
     // Xử lý khi token hết hạn (401)
     if (error.response?.status === 401) {
       console.warn('Token expired. Redirecting to login...')
       localStorage.removeItem('token')
       window.location.href = '/login'
+      return Promise.reject(error)
+    } else if (status === 400 && data?.fieldErrors) {
+      // Xử lý khi API validate fail
+      console.warn('API validate fail')
+      const validationErrors = {}
+      data.fieldErrors.forEach(err => {
+        validationErrors[err.field] = err.message
+      })
+      return Promise.reject({error: validationErrors})
+    } else {
+      return Promise.reject(error)
     }
-
-    return Promise.reject(error) // Trả lỗi về component để xử lý
   }
 )
 

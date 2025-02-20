@@ -81,6 +81,8 @@
 import {reactive} from 'vue'
 import router from '@/router/index.js'
 import {apiService} from '@/services/apiService.js'
+import { useToast } from 'vue-toastification';
+const toast = useToast();
 
 const form = reactive({
   post: { title: '', body: '', tags: [] },  // Dữ liệu bài viết
@@ -106,16 +108,15 @@ const toggleTag = (event) => {
 
 const handleCreatePost = async () => {
   form.error = {};
-  const body = JSON.stringify({ ...form.post, userId: 1 })
+  const body = JSON.stringify({ ...form.post })
   const data = await apiService.createPost(body)
   if (data) {
     if (data?.error) {
       form.error = { ...data.error }
+      toast.error('Failed to create post. Please check again.');
     } else {
-      console.log('Post Created:', data)
-      alert('Post created successfully!')
+      toast.success('Post created successfully!')
       await router.push(`/`)
-      location.reload()
     }
   }
 }

@@ -5,8 +5,8 @@ export const postSchema = yup.object({
   title: yup
     .string()
     .trim()
-    .min(5, 'Tiêu đề phải có ít nhất 5 ký tự')
-    .max(255, 'Tiêu đề không được vượt quá 255 ký tự')
+    // .min(5, 'Tiêu đề phải có ít nhất 5 ký tự')
+    // .max(255, 'Tiêu đề không được vượt quá 255 ký tự')
     .required('Tiêu đề là bắt buộc'),
 
   body: yup
